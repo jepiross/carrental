@@ -195,14 +195,14 @@ import org.springframework.data.repository.PagingAndSortingRepository;
    
 #### 적용 후 REST API 의 테스트   
 
-A) 차량등록   
+##### A) 차량등록   
 차량1 : http http://localhost:8085/carManagements carNo=car01 rentalAmt=10000 carRegDt=20200701 procStatus=WAITING   
 ![](images/차량등록_car01.png)   
    
 차량2 : http http://localhost:8085/carManagements carNo=car02 rentalAmt=20000 carRegDt=20200702 procStatus=WAITING   
 ![](images/차량등록_car02.png)   
    
-B) 예약   
+##### B) 예약   
 예약1 : http http://localhost:8082/carReservations resrvNo=res20200801Seq0001 resrvDt=20200801 carNo=car01 rentalDt=20200806 returnDt=20200807 rentalAmt=50000 procStatus=RESERVED   
 ![](images/차량예약_car01.png)   
    
@@ -212,14 +212,14 @@ B) 예약
 예약2 취소 : http http://localhost:8082/carReservations id=2 resrvNo=res20200803Seq0001 resrvCncleDt=20200803 procStatus=RESERVATION_CANCELED   
 ![](images/차량예약취소_car02.png)   
    
-C) 결제   
+##### C) 결제   
 결제1 : http http://localhost:8083/payments id=1 resrvNo=res20200801Seq0001 paymtNo=pay20200801Seq0001 paymtDt=20200801  paymtAmt=50000 procStatus=PAID carNo=car01 rentalDt=20200806 returnDt=20200807 rentalAmt=50000   
 ![](images/결제_car01.png)   
    
 결제취소1 : http http://localhost:8083/payments id=1 resrvNo=res20200801Seq0001 paymtNo=pay20200801Seq0001 paymtCncleDt=20200803 paymtAmt=50000 procStatus=PAYMENT_CANCELED carNo=car01   
 ![](images/결제취소_car01.png)   
    
-D) 마이페이지   
+##### D) 마이페이지   
 http http://localhost:8084/myPages   
 ![](images/마이페이지_예약취소,결제취소후_003.png)  
    
