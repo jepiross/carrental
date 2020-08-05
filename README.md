@@ -126,8 +126,8 @@
 # 구현
 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트와 파이선으로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
 ```
-cd rental
-mvn spring-boot:run
+cd gateway
+mvn spring-boot:run  
 
 cd reservation
 mvn spring-boot:run 
@@ -135,11 +135,16 @@ mvn spring-boot:run
 cd payment
 mvn spring-boot:run  
 
-cd view
-mvn spring-boot:run  
+cd rental
+mvn spring-boot:run
 
 cd management
 mvn spring-boot:run  
+
+cd view
+mvn spring-boot:run  
+
+
 ```
 
 ## DDD 의 적용
@@ -159,101 +164,23 @@ public class Payment {
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
     private String paymtNo;
-    private String payerCustNoNa;
-    private String paymtDt;
-    private String paymtCncleDt;
-    private Long paymtAmt;
-    private String resrvNo;
-    private String procStatus;
-    private String carNo;
-    private String rentalDt;
-    private String returnDt;
+    .../... 중략  .../...
     private Long rentalAmt;
 
     public Long getId() {
         return id;
     }
-
     public void setId(Long id) {
         this.id = id;
     }
+    
     public String getPaymtNo() {
         return paymtNo;
     }
-
     public void setPaymtNo(String paymtNo) {
         this.paymtNo = paymtNo;
     }
-    public String getPayerCustNoNa() {
-        return payerCustNoNa;
-    }
-
-    public void setPayerCustNoNa(String payerCustNoNa) {
-        this.payerCustNoNa = payerCustNoNa;
-    }
-    public String getPaymtDt() {
-        return paymtDt;
-    }
-
-    public void setPaymtDt(String paymtDt) {
-        this.paymtDt = paymtDt;
-    }
-    public String getPaymtCncleDt() {
-        return paymtCncleDt;
-    }
-
-    public void setPaymtCncleDt(String paymtCncleDt) {
-        this.paymtCncleDt = paymtCncleDt;
-    }
-    public Long getPaymtAmt() {
-        return paymtAmt;
-    }
-
-    public void setPaymtAmt(Long paymtAmt) {
-        this.paymtAmt = paymtAmt;
-    }
-    public String getResrvNo() {
-        return resrvNo;
-    }
-
-    public void setResrvNo(String resrvNo) {
-        this.resrvNo = resrvNo;
-    }
-    public String getProcStatus() {
-        return procStatus;
-    }
-
-    public void setProcStatus(String procStatus) {
-        this.procStatus = procStatus;
-    }
-    public String getCarNo() {
-        return carNo;
-    }
-
-    public void setCarNo(String carNo) {
-        this.carNo = carNo;
-    }
-    public String getRentalDt() {
-        return rentalDt;
-    }
-
-    public void setRentalDt(String rentalDt) {
-        this.rentalDt = rentalDt;
-    }
-    public String getReturnDt() {
-        return returnDt;
-    }
-
-    public void setReturnDt(String returnDt) {
-        this.returnDt = returnDt;
-    }
-    public Long getRentalAmt() {
-        return rentalAmt;
-    }
-
-    public void setRentalAmt(Long rentalAmt) {
-        this.rentalAmt = rentalAmt;
-    }
+    .../... 중략  .../...
 
 }
 ```
@@ -263,7 +190,7 @@ public class Payment {
 ```
 package carrental;
 import org.springframework.data.repository.PagingAndSortingRepository;
-public interface PaymentRepository extends PagingAndSortingRepository<Payment, Long>{
+    public interface PaymentRepository extends PagingAndSortingRepository<Payment, Long>{
 
 }
 ```
@@ -284,7 +211,7 @@ http http://localhost:8083/payments
 ```
 
 ## 폴리글랏 퍼시스턴스
-모두 H2 메모리DB를 적용하였다.
+모두 H2 메모리DB를 적용하였다.  
 다양한 데이터소스 유형 (RDB or NoSQL) 적용 시 데이터 객체에 @Entity 가 아닌 @Document로 마킹 후, 기존의 Entity Pattern / Repository Pattern 적용과 데이터베이스 제품의 설정 (application.yml) 만으로 가능하다.
 
 ```
@@ -299,8 +226,8 @@ spring:
 ```
 
 ## 동기식 호출 과 Fallback 처리
-Reservation → Payment 간 호출은 동기식 일관성 유지하는 트랜잭션으로 처리.
-호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출.
+Reservation → Payment 간 호출은 동기식 일관성 유지하는 트랜잭션으로 처리.  
+호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출.  
 
 ```
 ReservationApplication.java.
@@ -341,13 +268,7 @@ Feign 방식은 Http call 을 할 때, 도메인의 변화를 최소화 하기 �
         // mappings goes here
         payment.setId(carReserved.getId());
         payment.setResrvNo(carReserved.getResrvNo());
-        payment.setPaymtNo(carReserved.getResrvNo());
-        payment.setPaymtDt(carReserved.getResrvDt());
-        payment.setRentalAmt(carReserved.getRentalAmt());
-        payment.setPaymtAmt(carReserved.getRentalAmt());
-        payment.setProcStatus("RESERVED");
-        payment.setCarNo(carReserved.getCarNo());
-        payment.setRentalDt(carReserved.getRentalDt());
+        ...// 중략 //...
         payment.setReturnDt(carReserved.getReturnDt());
 
         System.out.println("##### listener carReservationCanceled.getResrvNo [RESERVED] : " + carReserved.getResrvNo());
@@ -362,9 +283,15 @@ Feign 방식은 Http call 을 할 때, 도메인의 변화를 최소화 하기 �
 
 - 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문도 못받는다는 것을 확인함.
 ```
-http http://localhost:8082/carReservations carNo=car01 custNo=cus01 paymtNo=pay20200801Seq0001 procStatus=RESERVED rentalAmt=10000 resrvNo=res20200801Seq0001 resrvDt=20200801 rentalDt=20200802 returnDt=20200805 #Fail
+carReservation -- (http request/response) --> Payment
+
+# Payment 서비스 종료
+
+# carReservation 등록
+http http://localhost:8082/carReservations carNo=car01 custNo=cus01 paymtNo=pay20200801Seq0001 procStatus=RESERVED rentalAmt=10000 resrvNo=res20200801Seq0001 resrvDt=20200801 rentalDt=20200802 returnDt=20200805     #Fail!!!!
 ```
-Payment를 종료한 시점에서는 500 Error ("Could not commit JPA transaction; nested exception is javax.persistence.RollbackException: Error while committing the transaction") 발생.
+Payment를 종료한 시점에서 상기 Reservation 등록 Script 실행 시,  
+500 Error 발생. ("Could not commit JPA transaction; nested exception is javax.persistence.RollbackException: Error while committing the transaction") .
 
 
 ## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
@@ -412,10 +339,10 @@ public class PolicyHandler{
 # Rental Service 를 잠시 내려놓음 (ctrl+c)
 
 #PAID 처리
-http http://localhost:8083/payments id=1 paymtAmt=10000 paymtDt=20200801 paymtNo=pay20200801Seq0001 procStatus=PAID resrvNo=res20200801Seq0001 #Success
+http http://localhost:8083/payments id=1 paymtAmt=10000 paymtDt=20200801 paymtNo=pay20200801Seq0001 procStatus=PAID resrvNo=res20200801Seq0001 #Success!!
 
 #결제상태 확인
-http http://localhost:8083/payments     
+http http://localhost:8083/payments  #제대로 Data 들어옴   
 
 #Rental 서비스 기동
 cd Rental
