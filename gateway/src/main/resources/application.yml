@@ -28,7 +28,11 @@ spring:
         - id: management
           uri: http://localhost:8085
           predicates:
-            - Path=/carManagements/** 
+            - Path=/carManagements/**
+        - id: comment
+          uri: http://localhost:8086
+          predicates:
+            - Path=/comments/**
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -68,7 +72,11 @@ spring:
         - id: management
           uri: http://management:8080
           predicates:
-            - Path=/carManagements/** 
+            - Path=/carManagements/**
+        - id: comment
+          uri: http://comment:8080
+          predicates:
+            - Path=/comments/**
       globalcors:
         corsConfigurations:
           '[/**]':
