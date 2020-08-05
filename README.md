@@ -400,10 +400,46 @@ http http://localhost:8081/carRentals     # 제대로 kafka로 부터 data 수�
 ## CI/CD 설정
 ### 빌드/배포
 각 프로젝트 jar를 Dockerfile을 통해 Docker Image 만들어 ECR저장소에 올린다.   
-EKS 클러스터에 접속한 뒤, 각 서비스의 deployment.yaml, service.yaml을 사용하여 서비스를 배포한다.   
-- 코드 형상관리 : https://github.com/l2skcc 하위 repository에 각각 구성   
-- 운영 플랫폼 : AWS의 EKS(Elastic Kubernetes Service)   
-- Docker Image 저장소 : AWS의 ECR(Elastic Container Registry)
+EKS 클러스터에 접속한 뒤, 각 서비스의 deployment.yaml, service.yaml을 kuectl명령어로 서비스를 배포한다.   
+  - 코드 형상관리 : https://github.com/l2skcc 하위 repository에 각각 구성   
+  - 운영 플랫폼 : AWS의 EKS(Elastic Kubernetes Service)   
+  - Docker Image 저장소 : AWS의 ECR(Elastic Container Registry)
+##### 배포 명령어
+```
+$ kubectl apply -f deployment.yaml
+$ kubectl apply -f svc.yaml
+```
+
+##### 배포 결과
+```
+$ kubectl get all
+NAME                               READY   STATUS    RESTARTS   AGE
+pod/gateway-849986759f-qdp7w       2/2     Running   0          21h
+pod/httpie                         2/2     Running   2          21h
+pod/management-d48c488c7-tcv7b     2/2     Running   0          17h
+pod/management-d48c488c7-wcj2p     2/2     Running   0          17h
+pod/payment-55c5884758-h2nv9       2/2     Running   0          21h
+pod/rental-567bd69584-wm9jw        2/2     Running   0          4h19m
+pod/reservation-559fd5d9f8-tmbnq   2/2     Running   0          21h
+pod/view-6484f74b85-swlgm          2/2     Running   0          21h
+
+NAME                  TYPE           CLUSTER-IP      EXTERNAL-IP                                                                    PORT(S)          AGE
+service/gateway       LoadBalancer   10.100.51.99    a69f85cf88d5143c38768f321c7043aa-1329116461.ap-northeast-2.elb.amazonaws.com   8080:31699/TCP   23h
+service/kubernetes    ClusterIP      10.100.0.1      <none>                                                                         443/TCP          24h
+service/management    ClusterIP      10.100.60.100   <none>                                                                         8080/TCP         23h
+service/payment       ClusterIP      10.100.142.82   <none>                                                                         8080/TCP         23h
+service/rental        ClusterIP      10.100.81.85    <none>                                                                         8080/TCP         23h
+service/reservation   ClusterIP      10.100.4.223    <none>                                                                         8080/TCP         23h
+service/view          ClusterIP      10.100.71.102   <none>                                                                         8080/TCP         23h
+
+NAME                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/gateway       1/1     1            1           21h
+deployment.apps/management    2/2     2            2           17h
+deployment.apps/payment       1/1     1            1           21h
+deployment.apps/rental        1/1     1            1           21h
+deployment.apps/reservation   1/1     1            1           21h
+deployment.apps/view          1/1     1            1           21h
+```
 
 
 # Liveness
