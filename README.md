@@ -80,41 +80,41 @@
 
 ![image](https://lh5.googleusercontent.com/VRDwND8JzXYwltI3FRphn2BVQU0rCCb1mGCpp-vdHaIJSZWSwPraQnGa2MuCJcyARnr_kiiGvpb97IeTIEFTWAnm7Dw3RI2L5Q_lHnEeDKHPA8pqVE8DhzY22U2V6QsVAwp5fS9x)
 
-    - 고객이 차량을 선택해 예약한다. (OK)
-    - 고객이 예약한 차량을 결제한다. (OK)
-    - 결제가 성공하면 차량이 대여 된다. (OK)
-    - 대여된 차량은 차량 관리(인벤토리)에 차량상태 변경(대여중) 처리 된다. (OK)
+- 고객이 차량을 선택해 예약한다. (OK)
+- 고객이 예약한 차량을 결제한다. (OK)
+- 결제가 성공하면 차량이 대여 된다. (OK)
+- 대여된 차량은 차량 관리(인벤토리)에 차량상태 변경(대여중) 처리 된다. (OK)
 
 ![image](https://lh5.googleusercontent.com/vKOVC6ra2Ch_gKHFq3BwlwrD2VpOBOKm2hq85heqLGOIojDtvkazJWB_VwGOHMkB4GaTYt2v7lcX4PRxr4UwmXkH6hx4yACyCKadEPQ523HgH1H-KLr_7qs7tsCiCtTHSloJUmZH)
 
-    - 고객이 예약한 렌트 차량을 취소할 수 있다. (OK)
-    - 고객이 예약 취소가 되면 차량 대여 취소된다. (OK)
-    - 고객은 차량 정보를 조회할 수 있다. (?) 
-    - 고객은 대여 진행 현황을 중간에 확인할 수 있다. (?)
+- 고객이 예약한 렌트 차량을 취소할 수 있다. (OK)
+- 고객이 예약 취소가 되면 차량 대여 취소된다. (OK)
+- 고객은 차량 정보를 조회할 수 있다. (?) 
+- 고객은 대여 진행 현황을 중간에 확인할 수 있다. (?)
 
 
 ### 모델 수정
 
 ![image](https://lh4.googleusercontent.com/mrEoqRNGCbd034MK1k8Uy1blJAT9Sw6UiG02BwCy1bfpa6YhdWv-gruwwolSn9l7hZ7W1aUU-6ke4razrZTyUO6g0wjkiG9Bx1pWna1ynGSG9Nk4IvpF7gLrD8EsErP-W0cvatj_)
     
-    - 수정된 모델은 모든 요구사항을 커버함.
+- 수정된 모델은 모든 요구사항을 커버함.
 
 ### 비기능 요구사항에 대한 검증
 
 ![image](https://lh3.googleusercontent.com/PV2RtlqdTL89Wal8kIE8AXhhLt71EDOHDc_yvSZ4XTgeBxhU0cxL_I_FARrfTvvEuJ7EI3ap-rFN_hrVjkc5U0Dm6dE8_ZmNhtaNvy55CAZ2E7-vhH8ipXDKCUK2LDE9c26ylbWU)
 
-    - 마이크로 서비스를 넘나드는 시나리오에 대한 트랜잭션 처리
-        - 차량 예약과 동시에 결제 처리 : 결제가 완료되지 않은 차량 대여는 불가, ACID 트랜잭션 적용, 예약 완료시 결제 처리에 대해서 Req-Res 방식 처리.   
-        - 결제 완료 시 대여 및 차량관리의 상태 변경 : rental에서 마이크로 서비스가 별도의 배포주기를 가지기 때문에 Eventual Consistency 방식으로 트랜잭션 처리함.   
-        - 나머지 모든 inter-microservice 트랜잭션: rental 및 management 이벤트에 대해, 데이터 일관성의 시점이 크리티컬하지 않은 모든 경우가 대부분이라 판단, Eventual Consistency 를 기본으로 채택함.
+- 마이크로 서비스를 넘나드는 시나리오에 대한 트랜잭션 처리
+- 차량 예약과 동시에 결제 처리 : 결제가 완료되지 않은 차량 대여는 불가, ACID 트랜잭션 적용, 예약 완료시 결제 처리에 대해서 Req-Res 방식 처리.   
+- 결제 완료 시 대여 및 차량관리의 상태 변경 : rental에서 마이크로 서비스가 별도의 배포주기를 가지기 때문에 Eventual Consistency 방식으로 트랜잭션 처리함.   
+- 나머지 모든 inter-microservice 트랜잭션: rental 및 management 이벤트에 대해, 데이터 일관성의 시점이 크리티컬하지 않은 모든 경우가 대부분이라 판단, Eventual Consistency 를 기본으로 채택함.
 
 ## 헥사고날 아키텍처 다이어그램 도출
     
 ![image](https://lh4.googleusercontent.com/fOS-lSfMqTzHT5h-KVTjDa5am7162EaWOtILX8Rkry1--ZsniD3KeRQRhvAT45sxlXpF8Q9pcw4ASCSWhmPd6HPjykpLxEUqeZcuY1pfhvD3oz7vBV0mS5_2c_oLRdqDXSCyD1Z2)
 
-    - Chris Richardson, MSA Patterns 참고하여 Inbound adaptor와 Outbound adaptor를 구분함
-    - 호출관계에서 Pub/Sub 과 Req/Res 를 구분함
-    - 서브 도메인과 바운디드 컨텍스트의 분리: 각 팀의 KPI 별로 아래와 같이 관심 구현 스토리를 나눠가짐
+- Chris Richardson, MSA Patterns 참고하여 Inbound adaptor와 Outbound adaptor를 구분함
+- 호출관계에서 Pub/Sub 과 Req/Res 를 구분함
+- 서브 도메인과 바운디드 컨텍스트의 분리: 각 팀의 KPI 별로 아래와 같이 관심 구현 스토리를 나눠가짐
 
 
 
