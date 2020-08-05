@@ -492,7 +492,7 @@ $ kubectl delete dr --all
 ![](images/sb-no.PNG)
 
 ---
-# RETRY
+## RETRY
 #### retry 리소스 생성
 Retry테스트를 위하여 VirtualService 리소스를 생성하고 부하테스트를 하였으나, 예상한 결과값을 보지 못하였다.    
 retries 설정값과 reservation pod의 수가 맞지 않는지, 모든 요청에 대하여 500응답을 주었다.
