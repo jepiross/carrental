@@ -1,6 +1,6 @@
 # 과제 - 렌트카 서비스
 
-# Table of contents
+### Table of contents
 
 - [과제 - 렌트카 서비스](#---)
   - [서비스 시나리오](#서비스-시나리오)
@@ -104,8 +104,8 @@
 ![image](https://lh3.googleusercontent.com/PV2RtlqdTL89Wal8kIE8AXhhLt71EDOHDc_yvSZ4XTgeBxhU0cxL_I_FARrfTvvEuJ7EI3ap-rFN_hrVjkc5U0Dm6dE8_ZmNhtaNvy55CAZ2E7-vhH8ipXDKCUK2LDE9c26ylbWU)
 
     - 마이크로 서비스를 넘나드는 시나리오에 대한 트랜잭션 처리
-        - 차량 예약과 동시에 결제 처리 : 결제가 완료되지 않은 차량 대여는 불가, ACID 트랜잭션 적용, 예약 완료시 결제 처리에 대해서 Req-Res 방식 처리.
-        - 결제 완료 시 대여 및 차량관리의 상태 변경 : rental에서 마이크로 서비스가 별도의 배포주기를 가지기 때문에 Eventual Consistency 방식으로 트랜잭션 처리함.
+        - 차량 예약과 동시에 결제 처리 : 결제가 완료되지 않은 차량 대여는 불가, ACID 트랜잭션 적용, 예약 완료시 결제 처리에 대해서 Req-Res 방식 처리.   
+        - 결제 완료 시 대여 및 차량관리의 상태 변경 : rental에서 마이크로 서비스가 별도의 배포주기를 가지기 때문에 Eventual Consistency 방식으로 트랜잭션 처리함.   
         - 나머지 모든 inter-microservice 트랜잭션: rental 및 management 이벤트에 대해, 데이터 일관성의 시점이 크리티컬하지 않은 모든 경우가 대부분이라 판단, Eventual Consistency 를 기본으로 채택함.
 
 ## 헥사고날 아키텍처 다이어그램 도출
@@ -121,7 +121,8 @@
 
 
 # 구현
-분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트와 파이선으로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
+분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트와 파이선으로 구현하였다.    
+구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
 ```
 cd gateway
 mvn spring-boot:run  
@@ -182,7 +183,7 @@ public class Payment {
 }
 ```
 
-- Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 
+- Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록    
 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용
 ```
 package carrental;
@@ -239,8 +240,8 @@ spring:
 ```
 
 ## 동기식 호출 과 Fallback 처리
-Reservation → Payment 간 호출은 동기식 일관성 유지하는 트랜잭션으로 처리.  
-호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출.  
+Reservation → Payment 간 호출은 동기식 일관성 유지하는 트랜잭션으로 처리.     
+호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출.     
 
 ```
 ReservationApplication.java.
@@ -257,8 +258,8 @@ public class ReservationApplication {
 }
 ```
 
-FeignClient 방식을 통해서 Request-Response 처리.   
-Feign 방식은 넷플릭스에서 만든 Http Client로 Http call을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.
+FeignClient 방식을 통해서 Request-Response 처리.     
+Feign 방식은 넷플릭스에서 만든 Http Client로 Http call을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.    
 → 실제 Request/Response 에러 시 Fegin Error 나는 것 확인   
 
 
@@ -293,7 +294,7 @@ Feign 방식은 넷플릭스에서 만든 Http Client로 Http call을 할 때, �
 
 
 
-- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문도 못받는다는 것을 확인함.
+- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문도 못받는다는 것을 확인함.   
 ```
 carReservation -- (http request/response) --> Payment
 
@@ -308,11 +309,11 @@ Payment를 종료한 시점에서 상기 Reservation 등록 Script 실행 시, 5
 
 ## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
 
-Payment가 이루어진 후에(PAID) RentaL시스템으로 이를 알려주는 행위는 동기식이 아니라 비 동기식으로 처리.
-Rental 시스템의 처리를 위하여 결제주문이 블로킹 되지 않아도록 처리.
-이를 위하여 결제이력에 기록을 남긴 후에 곧바로 결제승인이 되었다는 도메인 이벤트를 카프카로 송출한다(Publish).
+Payment가 이루어진 후에(PAID) RentaL시스템으로 이를 알려주는 행위는 동기식이 아니라 비 동기식으로 처리.   
+Rental 시스템의 처리를 위하여 결제주문이 블로킹 되지 않아도록 처리.   
+이를 위하여 결제이력에 기록을 남긴 후에 곧바로 결제승인이 되었다는 도메인 이벤트를 카프카로 송출한다(Publish).   
 
-- Rental 서비스에서는 PAID 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
+- Rental 서비스에서는 PAID 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:   
 ```
 @Service
 public class PolicyHandler{
