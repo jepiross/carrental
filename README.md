@@ -22,6 +22,7 @@
 
 기능적 요구사항
 1. 관리자는 회사가 보유하고 있는 대여 차량 정보를 등록/삭제 할 수 있다.
+1. 고객은 관리자가 등록한 차량의 정보를 조회할 수 있다.
 1. 고객은 차량을 선택해 예약할 수 있다.
 1. 고객은 예약한 정보를 예약취소 할 수 있다.
 1. 고객이 예약 차량에 대해 결제를 완료하면 차량이 대여된다.
@@ -42,11 +43,14 @@
 
 # 분석/설계
 
+
 ## Event Storming 결과
 * MSAEz 로 모델링한 이벤트스토밍 결과:  http://msaez.io/#/storming/YwOQgvEmhERptfuUxzgz2bPRQ5L2/share/e704bbe175813f193c92819f141a16a3/-MDn_Bksfd3DwJHUdzY
 
+
 ### 이벤트 도출
 ![image](https://lh4.googleusercontent.com/tKoqblyQq9-QlG0OBciZ4BXh59p59lMsx-Jbs907Xr9J_tpr4bvcTHxinFFf6TpPWG2utG85tsxDWAkOmxCxG9-rwc6D4UhhvuA0Jck1N5Nv71fRPoWMD4dpHLClkmy6lHPc1oeb)
+
 
 ### 어그리게잇으로 묶기
 ![image](https://lh6.googleusercontent.com/8ZV500Uxo0pRZxt7VY0xZr0shoECh6_5tFelREC_9X4ypLL4T2GpIdlItgXr3XHciv1lehkyCYHKUTZfMzH8vQv4p3IPUnzkRHiEpjds806-CvBXq_h1tQUJQpR8HsjybRHLHNAa)
@@ -62,17 +66,21 @@
         - Supporting Domain: management 은 차량 관리 관련 경쟁력을 내기 위한 서비스이며, SLA 수준은 연간 60% 이상 uptime 목표, 배포 주기는 각 팀의 자율이나 표준 스프린트 주기가 1주일 이므로 1주일 1회 이상을 기준으로 함.
         - General Domain: payment 결제서비스로 3rd Party 외부 서비스를 사용하는 것이 경쟁력이 높음 (핑크색으로 이후 전환할 예정)
 
+
 ### 폴리시 부착 (괄호는 수행주체, 폴리시 부착을 둘째단계에서 해놔도 상관 없음. 전체 연계가 초기에 드러남)
 
 ![image](https://lh6.googleusercontent.com/MHw86hOJW9mDVSa7m7W42jZVPRzKoDWAEvqkGFpjfOeSDOiuCXAITGKZMDA7ZmCffUjj0R6pzqr5edzRCCcqZpCRDWgCfLayZ4caHy2bd0Haybwb3BdsnQplHgqVsAAy8os8uQT_)
+
 
 ### 폴리시의 이동과 컨텍스트 매핑 (점선은 Pub/Sub, 실선은 Req/Res)
 
 ![image](https://lh4.googleusercontent.com/lQYX03iEk9i1wyKOMwP2cOWH_BkgIQQxK_h1AhTMuqP_s9T_mI0sEZbKa2iC94FYWKg9O4g5oHrHA_hXJeb_Xvzyfj2Ysidy3SuAaUdEYrBQbqJkF1kFoRYFvkO6cv09Khi6tJYF)
 
+
 ### 완성된 1차 모형
 
 ![image](https://lh3.googleusercontent.com/i0XBM9IcrXyjE16f9j0IhEETrsxZCF2AnNvsUJeBq79TpY8eYSQDwVs1I7DhtuLw-jtGmBSqnhFiJanSyadFqQ4iDFtqx2yGPpHtA0W6BZ7cx09-3s5DjC52MKat_ZDLKRa5jz1g)
+
 
 ### 1차 완성본에 대한 기능적/비기능적 요구사항을 커버하는지 검증
 
@@ -85,17 +93,19 @@
 
 ![image](https://lh5.googleusercontent.com/vKOVC6ra2Ch_gKHFq3BwlwrD2VpOBOKm2hq85heqLGOIojDtvkazJWB_VwGOHMkB4GaTYt2v7lcX4PRxr4UwmXkH6hx4yACyCKadEPQ523HgH1H-KLr_7qs7tsCiCtTHSloJUmZH)
 
-    - 고객이 예약한 렌트 차량을 취소할 수 있다 (OK)
-    - 고객이 예약 취소가 되면 차량 대여 취소된다 (OK)
-    - 고객이 주문상태를 중간중간 조회한다 (?) 
-    - 고객의 개인 정보와 차량 대여/취소 이력 정보 확인 가능하다 (?)
+    - 고객이 예약한 렌트 차량을 취소할 수 있다. (OK)
+    - 고객이 예약 취소가 되면 차량 대여 취소된다. (OK)
+    - 고객은 차량 정보를 조회할 수 있다. (?) 
+    - 고객은 대여 진행 현황을 중간에 확인할 수 있다. (?)
 
 
 ### 모델 수정
 
 ![image](https://lh4.googleusercontent.com/mrEoqRNGCbd034MK1k8Uy1blJAT9Sw6UiG02BwCy1bfpa6YhdWv-gruwwolSn9l7hZ7W1aUU-6ke4razrZTyUO6g0wjkiG9Bx1pWna1ynGSG9Nk4IvpF7gLrD8EsErP-W0cvatj_)
     
+    - view 영역을 별도로 분리해 구현함.
     - 수정된 모델은 모든 요구사항을 커버함.
+
 
 ### 비기능 요구사항에 대한 검증
 
@@ -106,13 +116,14 @@
         - 결제 완료 시 대여 및 차량관리의 상태 변경 : rental에서 마이크로 서비스가 별도의 배포주기를 가지기 때문에 Eventual Consistency 방식으로 트랜잭션 처리함.
         - 나머지 모든 inter-microservice 트랜잭션: rental 및 management 이벤트에 대해, 데이터 일관성의 시점이 크리티컬하지 않은 모든 경우가 대부분이라 판단, Eventual Consistency 를 기본으로 채택함.
 
+
 ## 헥사고날 아키텍처 다이어그램 도출
     
 ![image](https://lh4.googleusercontent.com/fOS-lSfMqTzHT5h-KVTjDa5am7162EaWOtILX8Rkry1--ZsniD3KeRQRhvAT45sxlXpF8Q9pcw4ASCSWhmPd6HPjykpLxEUqeZcuY1pfhvD3oz7vBV0mS5_2c_oLRdqDXSCyD1Z2)
 
     - Chris Richardson, MSA Patterns 참고하여 Inbound adaptor와 Outbound adaptor를 구분함
-    - 호출관계에서 Pub/Sub 과 Req/Resp 를 구분함
-    - 서브 도메인과 바운디드 컨텍스트의 분리:  각 팀의 KPI 별로 아래와 같이 관심 구현 스토리를 나눠가짐
+    - 호출관계에서 Pub/Sub 과 Req/Res 를 구분함
+    - 서브 도메인과 바운디드 컨텍스트의 분리: 각 팀의 KPI 별로 아래와 같이 관심 구현 스토리를 나눠가짐
 
 
 
