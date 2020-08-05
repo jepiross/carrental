@@ -386,26 +386,20 @@ http http://localhost:8081/carRentals     # 제대로 kafka로 부터 data 수�
 
 
 # Liveness
-/tmp/healthy 파일의 존재를 확인하는 liveness를 적용하였다.   
-3초동안 파드가 뜨기를 기다렸다가 파드가 뜨지 않았을 경우 최대 5번까지 재시도 한다. 
-이때, /tmp/healthy를 지워버리므로 liveness는 pod상태가 정상이 아니라고 판단한다.   
-5번 재시도 후에도 파드가 뜨지 않았을 경우 CrashLoopBackOff 상태가 된다.   
+pod의 container가 정상적으로 기동되는지 확인하여, 비정상 상태인 경우 pod를 재기동하도록 한다.   
+
+아래의 값으로 liveness를 설정한다.
+- 재기동 제어값 : /tmp/healthy 파일의 존재를 확인
+- 기동 대기 시간 : 3초
+- 재기동 횟수 : 5번까지 재시도
+
+이때, 재기동 제어값인 /tmp/healthy파일을 강제로 지워 liveness가 pod를 비정상 상태라고 판단하도록 하였다.    
+5번 재시도 후에도 파드가 뜨지 않았을 경우 CrashLoopBackOff 상태가 됨을 확인하였다.   
+##### payment에 Liveness 적용한 내용
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
-metadata:
-  name: payment
-  labels:
-    app: payment
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: payment
-  template:
-    metadata:
-      labels:
-        app: payment
+...
     spec:
       containers:
         - name: payment
@@ -414,16 +408,7 @@ spec:
           - /bin/sh
           - -c
           - touch /tmp/healthy; sleep 10; rm -rf /tmp/healthy; sleep 600;
-          ports:
-            - containerPort: 8080
-          readinessProbe:
-            httpGet:
-              path: '/actuator/health'
-              port: 8080
-            initialDelaySeconds: 10
-            timeoutSeconds: 2
-            periodSeconds: 5
-            failureThreshold: 10
+...
           livenessProbe:                 #적용 부분
             exec:
               command:
@@ -434,72 +419,18 @@ spec:
             periodSeconds: 5
             failureThreshold: 5
 ```
-```
-$ k get pod -w
-NAME                           READY   STATUS    RESTARTS   AGE
-gateway-849986759f-9w56j       1/1     Running   0          101m
-management-57bdb8b8c-gvrkq     1/1     Running   0          74m
-payment-5664c755cc-4tgn7       0/1     Running   1          48s
-rental-c697b7d78-xl8kf         1/1     Running   0          61m
-reservation-559fd5d9f8-4ldrg   1/1     Running   0          59m
-view-6484f74b85-6ql85          1/1     Running   0          57m
-payment-5664c755cc-4tgn7       1/1     Running   1          49s
-payment-5664c755cc-4tgn7       0/1     Running   2          53s
-payment-5664c755cc-4tgn7       1/1     Running   2          74s
-payment-5664c755cc-4tgn7       0/1     Running   3          78s
-payment-5664c755cc-4tgn7       1/1     Running   3          99s
-payment-5664c755cc-4tgn7       0/1     Running   4          103s
-payment-5664c755cc-4tgn7       1/1     Running   4          2m4s
-payment-5664c755cc-4tgn7       0/1     CrashLoopBackOff   4          2m8s
+#### 테스트 결과 
+![](images/liveness.PNG)
 
-$ k get pod
-NAME                           READY   STATUS             RESTARTS   AGE
-gateway-849986759f-9w56j       1/1     Running            0          103m
-management-57bdb8b8c-gvrkq     1/1     Running            0          76m
-payment-5664c755cc-4tgn7       0/1     CrashLoopBackOff   4          2m27s
-rental-c697b7d78-xl8kf         1/1     Running            0          63m
-reservation-559fd5d9f8-4ldrg   1/1     Running            0          60m
-view-6484f74b85-6ql85          1/1     Running            0          58m
-```
-
-
-# ISTIO
-istio 설치 후 deploy재기동 
-```
-cd istio
-curl -L https://git.io/getLatestIstio | ISTIO_VERSION=1.4.5 sh -
-cd istio-1.4.5
-export PATH=$PWD/bin:$PATH
-for i in install/kubernetes/helm/istio-init/files/crd*yaml; do kubectl apply -f $i; done
-kubectl apply -f install/kubernetes/istio-demo.yaml
-kubectl get pod -n istio-system
-kubectl label ns default istio-injection=enabled
-```
-테스트 결과 
-```
-$ k exec -it management-57bdb8b8c-2z7lr -- /bin/sh
-Defaulting container name to management.
-/ # wget http://management.default:8080
-Connecting to management.default:8080 (10.100.60.100:8080)
-index.html           100% |*********************************************************************************************************************************|   240  0:00:00 ETA
-/ # wget http://view.default:8080/myPages
-Connecting to view.default:8080 (10.100.71.102:8080)
-myPages              100% |*********************************************************************************************************************************|   300  0:00:00 ETA
-```
-httpie 설치 및 테스트
-```
-kubectl exec -it httpie bin/bash
-http http://gateway:8080/carManagements carNo=test rentalAmt=10000 procStatus=WAITING carRegDt=20200701
-http http://gateway:8080/carManagements carNo=car01 rentalAmt=10000 procStatus=WAITING carRegDt=20200701
-http http://gateway:8080/carManagements carNo=car02 rentalAmt=20000 procStatus=WAITING carRegDt=20200702
-http http://view:8080/carInformations
-```
-  
-
+---
 # 서킷 브레이커
-```
-$ kubectl scale deploy management --replicas=2
+ISTIO, httpie 설치하여 테스트 환경을 만든다.  
+각 마이크로 서비스의 deployment에 istio가 적용되어, istio컨테이너가 pod마다 sidecar로 기동 된것을 확인하였다.   
 
+##### 서킷 브레이커 DestinationRule 생성
+management 서비스에 대해 서킷 브레이커를 적용하였다.   
+최대 1개의 http 연결만 받아들이고, 10초마다 확인하여(interval) 5개의 500에러가 발생하면(consecutiveErrors) 30초 동안 연결을 거부(baseEjectionTime)하도록 설정하였다.   
+```
 $ kubectl apply -f - <<EOF
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
@@ -512,179 +443,38 @@ spec:
       tcp:
         maxConnections: 1
       http:
-        http1MaxPendingRequests: 1
+        http1MaxPendingRequests: 1    # 최대 1개의 http 연결만
         maxRequestsPerConnection: 1
     outlierDetection:
-      consecutiveErrors: 5
-      interval: 10s
-      baseEjectionTime: 30s
+      consecutiveErrors: 5     # 5개의 500에러가 발생
+      interval: 10s            # 10초마다 확인
+      baseEjectionTime: 30s    # 30초 동안 연결을 거부
       maxEjectionPercent: 100
 EOF
 ```
-#### 적용 시 
+##### httpie에서 management 서비스로 부하를 주었다.
 ```
 siege -c20 -t30S  -v --content-type "application/json" 'http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}'
-** SIEGE 3.0.8
-** Preparing 20 concurrent users for battle.
-The server is now under siege...
-HTTP/1.1 503   0.01 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.01 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.01 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.04 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.01 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.02 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.05 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.05 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.04 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.10 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.04 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.09 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.04 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.11 secs:      95 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.04 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.05 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.06 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.06 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.06 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.06 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.06 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.06 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.06 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.06 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.08 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.08 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.02 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.08 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.09 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.02 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.04 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.05 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.15 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.15 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.12 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.18 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.03 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.10 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.10 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.01 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.01 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.01 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.12 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.05 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.01 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.05 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.11 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.03 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.00 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.00 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.04 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.08 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.11 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.01 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.13 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.11 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.01 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.12 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.14 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.02 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.14 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.02 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.04 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.05 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.08 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.03 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.01 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.05 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.07 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.15 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.02 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.03 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.05 secs:      81 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.05 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.07 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.01 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.28 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.09 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 503   0.08 secs:      95 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.06 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
 ```
 
-#### 서킷 브레이커 삭제 
+#### 서킷 브레이커 적용 시 결과 
+아래와 같이 management 서비스에서 일부의 요청만 받아드리고, 허용치를 넘어서는 요청에서 대해서는 500을 응답주는것을 확인하였다.
+![](images/sb-ok.PNG)
+
+
+#### 서킷 브레이커 DestinationRule 삭제 
+management에 적용된 서킷 브레이커 DestinationRule을 삭제하고 다시 부하를 주어 결과를 확인한다.    
 ```
 $ kubectl delete dr --all
-siege -c20 -t30S  -v --content-type "application/json" 'http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}'
-** SIEGE 3.0.8
-** Preparing 20 concurrent users for battle.
-The server is now under siege...
-HTTP/1.1 201   0.05 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.07 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.07 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.07 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.09 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.09 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.08 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.08 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.09 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.04 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.13 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.05 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.19 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.13 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.27 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.20 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.27 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.29 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.20 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.07 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.01 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.01 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.05 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.06 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.06 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.08 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.01 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.05 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.03 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.00 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.08 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.07 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.02 secs:     334 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
-HTTP/1.1 201   0.09 secs:     332 bytes ==> POST http://gateway:8080/carManagements POST {"carNo":"test", "rentalAmt":"10000", "procStatus":"WAITING", "carRegDt":"20200701"}
 ```
+아래와 같이 management서비스에서 모든 요청을 처리하여 200응답을 주는것을 확인하였다.
+![](images/sb-no.PNG)
 
-
-# 리트라이
-### 리트라이 
+---
+# RETRY
+#### retry 리소스 생성
+Retry테스트를 위하여 VirtualService 리소스를 생성하고 부하테스트를 하였으나, 예상한 결과값을 보지 못하였다.    
+retries 설정값과 reservation pod의 수가 맞지 않는지, 모든 요청에 대하여 500응답을 주었다.
 ```
 $ kubectl apply -f - <<EOF
 apiVersion: networking.istio.io/v1alpha3
@@ -703,7 +493,7 @@ spec:
       perTryTimeout: 2s
 EOF
 ```
-#### 적용
+#### 적용 상태에서 요청
 ```
 $ siege -c5 -t30S  -v --content-type "application/json" 'http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}'
 ** SIEGE 3.0.8
@@ -714,59 +504,129 @@ HTTP/1.1 500   0.04 secs:     257 bytes ==> POST http://gateway:8080/carReservat
 HTTP/1.1 500   0.04 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
 HTTP/1.1 500   0.04 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
 HTTP/1.1 500   0.02 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
-HTTP/1.1 500   0.07 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
-HTTP/1.1 500   0.04 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
-HTTP/1.1 500   0.03 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
-HTTP/1.1 500   0.04 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
-HTTP/1.1 500   0.04 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
-HTTP/1.1 500   0.03 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
-HTTP/1.1 500   0.03 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
-HTTP/1.1 500   0.03 secs:     257 bytes ==> POST http://gateway:8080/carReservations POST {"carNo":"car01", "custNo":"cus01", "paymtNo":"pay20200801Seq0001", "procStatus":"RESERVED", "rentalAmt":"10000", "resrvNo":"res20200801Seq0001", "resrvDt":"20200801", "rentalDt":"20200802", "returnDt":"20200805"}
+.........
 ```
 
+---
+# HPA
+management 서비스에 대하여 오토스케일러를 적용하여 확장적 운영이 가능하게 하였다. (실제로는 reservation 서비스에 적용하면 좋을것 같다.)   
+테스트에 앞서, pod의 cpu 사용량을 오토스케일러에서 확인 할 수 있도록 metrics-server를 설치하였다.     
 
-# 
+### autoscale 리소스 생성
+management pod를 최소 2개로 유지하며, 평균 cpu 사용량를 20%를 유지하는 선에서 최대 pod개수를 10개까지 자동으로 늘린다.
+```
+kubectl autoscale deploy management --min=2 --max=10 --cpu-percent=20
+```
+아래 yaml은 실제 적용된 autoscaler의 내용이다.   
+```
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: management
+  namespace: default
+spec:
+  maxReplicas: 10
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: management
+  targetCPUUtilizationPercentage: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 20
+status:
+  currentCPUUtilizationPercentage: 18
+  currentReplicas: 2
+  desiredReplicas: 4
 ```
 
-
-siege -r 2000 -c 200 -v http://gateway:8080/carManagements
-
+### deployment 수정
+management-deployment.yaml의 containers하위에 아래와 같이 container의 cpu limits과 requests를 설정한다.
+```
+containers:
+   resources:
+      limits: 
+        cpu: 500m
+      requests:
+        cpu: 200m
 ```
 
-### HPA : 오토스케일 아웃
-시스템을 안정적으로 운영할 수 있게 자동화된 확장 기능을 적용
-
-
-- 테스트를 위해 관리서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 20프로를 넘어서면 replica 를 10개까지 늘려준다:
+### 부하 테스트 진행
 ```
-kubectl autoscale deploy management --min=1 --max=10 --cpu-percent=20
-kubectl get po -l run=management -w
+# siege -r 2000 -c 200 -v http://gateway:8080/carManagements
 ```
-- 워크로드를 걸어준다.
-```
-siege -r 2000 -c 200 -v http://gateway:8080/carManagements
+httpie에서 management로 부하테스트를 진행하였다.    
+- 부하가 들어갈수록 hpa에서 management의 cpu 사용량이 20%를 넘어 197%까지 순간적으로 늘어남을 확인 할 수 있다.
+- 이에 따라 management의 replica 수가 2개에서 10개까지 증가한다.
+- 10개까지 늘어단 management pod가 요청을 나누어 처리하면서 cpu사용량이 28%까지 줄어들었다.
+![](images/hpa-2.png)
 
 ```
-- 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다:
+kubectl delete hpa management
 ```
-kubectl get deploy pay -w
+
+---
+# configmap
+rental 서비스의 경우, 국가와 지역에 따라 설정이 변할 수도 있음을 가정할 수 있다.   
+configmap에 설정된 국가와 지역 설정을 rental 서비스에서 받아 사용 할 수 있도록 한다.   
+   
+아래와 같이 configmap을 생성한다.   
+data 필드에 보면 contury와 region정보가 설정 되어있다. 
+##### configmap 생성
 ```
-- 어느정도 시간이 흐른 후 (약 30초) 스케일 아웃이 벌어지는 것을 확인할 수 있다:
+$ kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rental-region
+data:
+  contury: "korea"
+  region: "seoul"
+EOF
 ```
-NAME    DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-pay     1         1         1            1           17s
-pay     1         2         1            1           45s
-pay     1         4         1            1           1m
-:
+   
+rental deployment를 위에서 생성한 rental-region(cm)의 값을 사용 할 수 있도록 수정한다.
+###### configmap내용을 deployment에 적용 
+``` yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rental
+  labels:
+    app: rental
+...
+    spec:
+      containers:
+        - name: rental
+          env:                                                 ##### 컨테이너에서 사용할 환경 변수 설정
+            - name: CONTURY
+              valueFrom:
+                configMapKeyRef:
+                  name: rental-region
+                  key: contury
+            - name: REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: rental-region
+                  key: region
+          volumeMounts:                                                 ##### CM볼륨을 바인딩
+          - name: config
+            mountPath: "/config"
+            readOnly: true
+...
+      volumes:                                                 ##### CM 볼륨 
+      - name: config
+        configMap:
+          name: rental-region
 ```
-- siege 의 로그를 통해 전체적인 성공률이 높아진 것을 확인 
-```
-Transactions:		        5078 hits
-Availability:		       92.45 %
-Elapsed time:		       120 secs
-Data transferred:	        0.34 MB
-Response time:		        5.60 secs
-Transaction rate:	       17.15 trans/sec
-Throughput:		        0.01 MB/sec
-Concurrency:		       96.02
-```
+rental pod에 cm에서 환경변수를 가져오겠다는 설정이 적용 된 것을 확인 할 수 있다.
+![](images/cm-1.PNG)
+
+실제 rental pod안에서 cm에 설정된 국가와 지역 설정이 환경변수로 적용 된것을 확인 할 수 있다.
+![](images/cm-2.PNG)
+
+
+   
