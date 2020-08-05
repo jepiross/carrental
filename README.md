@@ -21,8 +21,8 @@
 # 서비스 시나리오
 
 ## 기능적 요구사항
-1. 관리자는 회사가 보유하고 있는 대여 차량 정보를 등록/삭제 할 수 있다.
-1. 고객은 관리자가 등록한 차량의 정보를 조회할 수 있다.
+1. 관리자는 대여 차량 정보를 등록/삭제 할 수 있다.
+1. 고객은 차량의 정보를 조회할 수 있다.
 1. 고객은 차량을 선택해 예약할 수 있다.
 1. 고객은 예약한 정보를 예약취소 할 수 있다.
 1. 고객이 예약 차량에 대해 결제를 완료하면 차량이 대여된다.
@@ -33,9 +33,9 @@
 
 ## 비기능적 요구사항
 1. 트랜잭션
-    1. 결제가 되지 않은 예약건은 차량 대여가 성립하지 않는다.  (Sync 호출)
+    1. 결제가 되지 않은 예약건은 차량 대여가 성립하지 않는다. (Sync 호출)
 1. 장애격리
-    1. 관리자 차량관리 기능이 수행되지 않더라도 예약은 항상 받을 수 있어야 한다.  (Async:Event-driven, Eventual Consistency)
+    1. 관리자 차량관리 기능이 수행되지 않더라도 예약은 항상 받을 수 있어야 한다. (Async:Event-driven, Eventual Consistency)
     1. 결제시스템이 과중되면 사용자를 잠시동안 받지 않고 결제를 잠시후에 하도록 유도한다. (Circuit breaker, fallback)
 1. 성능
     1. 고객이 대여 현황을 예약 시스템에서 항상 확인 할 수 있어야 한다. (CQRS)
@@ -258,9 +258,8 @@ public class ReservationApplication {
 ```
 
 FeignClient 방식을 통해서 Request-Response 처리.   
-Feign 방식은 넷플릭스에서 만든 Http Client.   
-Feign 방식은 Http call 을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.   
-실제 Request/Response 에러 시 Fegin Error 나는 것 확인 함.   
+Feign 방식은 넷플릭스에서 만든 Http Client로 Http call을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.
+→ 실제 Request/Response 에러 시 Fegin Error 나는 것 확인   
 
 
 
@@ -518,31 +517,6 @@ management 서비스에 대하여 오토스케일러를 적용하여 확장적 �
 management pod를 최소 2개로 유지하며, 평균 cpu 사용량를 20%를 유지하는 선에서 최대 pod개수를 10개까지 자동으로 늘린다.
 ```
 kubectl autoscale deploy management --min=2 --max=10 --cpu-percent=20
-```
-아래 yaml은 실제 적용된 autoscaler의 내용이다.   
-```
-apiVersion: autoscaling/v1
-kind: HorizontalPodAutoscaler
-metadata:
-  name: management
-  namespace: default
-spec:
-  maxReplicas: 10
-  minReplicas: 2
-  scaleTargetRef:
-    apiVersion: extensions/v1beta1
-    kind: Deployment
-    name: management
-  targetCPUUtilizationPercentage: 20
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      targetAverageUtilization: 20
-status:
-  currentCPUUtilizationPercentage: 18
-  currentReplicas: 2
-  desiredReplicas: 4
 ```
 
 ### deployment 수정
