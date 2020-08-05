@@ -376,13 +376,17 @@ http http://localhost:8081/carRentals     # 제대로 kafka로 부터 data 수�
 
 
 
-
+---
 # 운영
-
 ## CI/CD 설정
+### 빌드/배포
+각 프로젝트 jar를 Dockerfile을 통해 Docker Image 만들어 ECR저장소에 올린다.
+EKS 클러스터에 접속한 뒤, 각 서비스의 deployment.yaml, service.yaml을 사용하여 서비스를 배포한다.
 
-
-각 구현체들은 각자의 source repository 에 구성되었고, 사용한 CI/CD 플랫폼은 GCP를 사용하였으며, pipeline build script 는 각 프로젝트 폴더 이하에 cloudbuild.yml 에 포함되었다.
+##### 구성
+- 코드 형상관리 : https://github.com/l2skcc 하위 repository에 각각 구성
+- 운영 플랫폼 : AWS의 EKS(Elastic Kubernetes Service)
+- Docker Image 저장소 : AWS의 ECR(Elastic Container Registry)
 
 
 # Liveness
