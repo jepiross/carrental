@@ -303,7 +303,7 @@ Reservation --> Payment 간 호출은 동기식 일관성 유지하는 트랜잭
 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출.
 다.
 
-- ReservationApplication.java.
+ReservationApplication.java.
 → FeignClient 방식을 통해서 Request-Response 처리.
 → Feign 방식은 넷플릭스에서 만든 Http Client 입니다. Feign 방식은 Http call 을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.
 → 실제 Request/Response 에러 시 Fegin Error 나는 것 확인 함. (Ex. POST가 아닌 PUT으로 Request 시).
