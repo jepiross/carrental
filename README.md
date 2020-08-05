@@ -380,10 +380,10 @@ http http://localhost:8081/carRentals     # 제대로 kafka로 부터 data 수�
 # 운영
 ## CI/CD 설정
 ### 빌드/배포
-각 프로젝트 jar를 Dockerfile을 통해 Docker Image 만들어 ECR저장소에 올린다.
-EKS 클러스터에 접속한 뒤, 각 서비스의 deployment.yaml, service.yaml을 사용하여 서비스를 배포한다.
-- 코드 형상관리 : https://github.com/l2skcc 하위 repository에 각각 구성
-- 운영 플랫폼 : AWS의 EKS(Elastic Kubernetes Service)
+각 프로젝트 jar를 Dockerfile을 통해 Docker Image 만들어 ECR저장소에 올린다.   
+EKS 클러스터에 접속한 뒤, 각 서비스의 deployment.yaml, service.yaml을 사용하여 서비스를 배포한다.   
+- 코드 형상관리 : https://github.com/l2skcc 하위 repository에 각각 구성   
+- 운영 플랫폼 : AWS의 EKS(Elastic Kubernetes Service)   
 - Docker Image 저장소 : AWS의 ECR(Elastic Container Registry)
 
 
@@ -395,7 +395,7 @@ pod의 container가 정상적으로 기동되는지 확인하여, 비정상 상�
 - 기동 대기 시간 : 3초
 - 재기동 횟수 : 5번까지 재시도
 
-이때, 재기동 제어값인 /tmp/healthy파일을 강제로 지워 liveness가 pod를 비정상 상태라고 판단하도록 하였다.    
+이때, 재기동 제어값인 /tmp/healthy파일을 강제로 지워 liveness가 pod를 비정상 상태라고 판단하도록 하였다.       
 5번 재시도 후에도 파드가 뜨지 않았을 경우 CrashLoopBackOff 상태가 됨을 확인하였다.   
 ##### payment에 Liveness 적용한 내용
 ```yaml
