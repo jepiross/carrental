@@ -93,11 +93,15 @@
   - 고객은 대여 진행 현황을 중간에 확인할 수 있다. (?)
 
 
+
+
 ### 모델 수정
 
 ![image](https://lh4.googleusercontent.com/mrEoqRNGCbd034MK1k8Uy1blJAT9Sw6UiG02BwCy1bfpa6YhdWv-gruwwolSn9l7hZ7W1aUU-6ke4razrZTyUO6g0wjkiG9Bx1pWna1ynGSG9Nk4IvpF7gLrD8EsErP-W0cvatj_)
     
 - 수정된 모델은 모든 요구사항을 커버함.
+
+
 
 ### 비기능 요구사항에 대한 검증
 
@@ -107,6 +111,9 @@
     - 차량 예약과 동시에 결제 처리 : 결제가 완료되지 않은 차량 대여는 불가, ACID 트랜잭션 적용, 예약 완료시 결제 처리에 대해서 Req-Res 방식 처리.   
     - 결제 완료 시 대여 및 차량관리의 상태 변경 : rental에서 마이크로 서비스가 별도의 배포주기를 가지기 때문에 Eventual Consistency 방식으로 트랜잭션 처리함.   
     - 나머지 모든 inter-microservice 트랜잭션: rental 및 management 이벤트에 대해, 데이터 일관성의 시점이 크리티컬하지 않은 모든 경우가 대부분이라 판단, Eventual Consistency 를 기본으로 채택함.
+    
+    
+    
 
 ## 헥사고날 아키텍처 다이어그램 도출
     
@@ -144,6 +151,8 @@ mvn spring-boot:run
 
 
 ```
+
+
 
 ## DDD 의 적용
 - 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언
@@ -183,6 +192,8 @@ public class Payment {
 }
 ```
 
+
+
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록    
 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용
 ```
@@ -192,6 +203,8 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 
 }
 ```
+   
+   
    
 #### 적용 후 REST API 의 테스트   
 
@@ -224,6 +237,8 @@ http http://localhost:8084/myPages
 ![](images/마이페이지_예약취소,결제취소후_003.png)  
    
 
+
+
 ## 폴리글랏 퍼시스턴스
 모두 H2 메모리DB를 적용하였다.  
 다양한 데이터소스 유형 (RDB or NoSQL) 적용 시 데이터 객체에 @Entity 가 아닌 @Document로 마킹 후, 기존의 Entity Pattern / Repository Pattern 적용과 데이터베이스 제품의 설정 (application.yml) 만으로 가능하다.
@@ -238,6 +253,9 @@ spring:
         password: db계정 비밀번호
         driver-class-name: org.mariadb.jdbc.Driver
 ```
+
+
+
 
 ## 동기식 호출 과 Fallback 처리
 Reservation → Payment 간 호출은 동기식 일관성 유지하는 트랜잭션으로 처리.     
@@ -306,6 +324,10 @@ http http://localhost:8082/carReservations carNo=car01 custNo=cus01 paymtNo=pay2
 Payment를 종료한 시점에서 상기 Reservation 등록 Script 실행 시, 500 Error 발생.
 ("Could not commit JPA transaction; nested exception is javax.persistence.RollbackException: Error while committing the transaction")   
 ![](images/결제서비스_중지_시_예약시도.png)   
+
+
+
+
 
 ## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
 
