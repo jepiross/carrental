@@ -663,12 +663,15 @@ rental pod에 cm에서 환경변수를 가져오겠다는 설정이 적용 된 �
 
 ---
 # 무중단 배포
-서비스 중인 view의 docker image를 v3 -> v1로 바꾸어 무중단 배포가 되는지 테스트하였다.
+서비스 중인 view의 docker image의 버전를 v3 -> v1로 변경한다.   
+이때, view:v1이 정상적으로 무중단 배포 되는지를 확인하였다.
 
 ##### 부하 진행중
+view 서비스에 조회하는 명령어를 300s동안 계속 던지고 있는다.
 ![](images/부하진행중.PNG)
 
 ##### view 이미지의 version 변경
+부하가 진행 되는 중에, view의 버전을 1으로 변경한다.
 ```
 $ kubectl set image deploy view view=496278789073.dkr.ecr.ap-northeast-2.amazonaws.com/ecr-skcc-team2-veiw:v1
 -
@@ -676,8 +679,9 @@ $ kubectl set image deploy view view=496278789073.dkr.ecr.ap-northeast-2.amazona
 ```
 
 ##### 무중단 배포 진행 
-view-v1의 pod가 새로 배포가 완료되어 서비스 정상 상태가 된 후, 기존의 view-v3이 서비스 중단 됨을 확인.
+view-v1의 pod가 새로 배포가 완료되어 서비스 정상 상태가 된 후, 기존의 view-v3 pod가 중단 됨이 확인되었다.   
+이렇게 진행되는 경우, 새로운 pod가 완전히 기동 된 후 기존 pod가 중단 되므로 view 서비스 중단이 발생하지 않는다.
 ![](images/무중단배포.PNG)
 
-#### 요청 응답이 계속 200임을 확인
+이렇게 무중단 배포가 진행되는동안에 요청에 대한 응답도 계속 200으로 정상 결과를 반환한다.
 ![](images/무중단-결과.PNG) 
