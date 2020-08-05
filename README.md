@@ -17,7 +17,7 @@
     - [오토스케일 아웃](#오토스케일-아웃)
     - [무정지 재배포](#무정지-재배포)
   
-
+---
 # 서비스 시나리오
 
 ## 기능적 요구사항
@@ -41,7 +41,7 @@
     1. 고객이 대여 현황을 예약 시스템에서 항상 확인 할 수 있어야 한다. (CQRS)
     1. 결제, 대여/반납 정보가 변경 될 때 마다 차량 재고가 변경될 수 있어야 한다. (Event driven)
 
-
+---
 # 분석/설계
 
 ## Event Storming 결과
@@ -93,14 +93,11 @@
   - 고객은 대여 진행 현황을 중간에 확인할 수 있다. (?)
 
 
-
-
 ### 모델 수정
 
 ![image](https://lh4.googleusercontent.com/mrEoqRNGCbd034MK1k8Uy1blJAT9Sw6UiG02BwCy1bfpa6YhdWv-gruwwolSn9l7hZ7W1aUU-6ke4razrZTyUO6g0wjkiG9Bx1pWna1ynGSG9Nk4IvpF7gLrD8EsErP-W0cvatj_)
     
 - 수정된 모델은 모든 요구사항을 커버함.
-
 
 
 ### 비기능 요구사항에 대한 검증
@@ -114,7 +111,7 @@
     
     
     
-
+---
 ## 헥사고날 아키텍처 다이어그램 도출
     
 ![image](https://lh4.googleusercontent.com/fOS-lSfMqTzHT5h-KVTjDa5am7162EaWOtILX8Rkry1--ZsniD3KeRQRhvAT45sxlXpF8Q9pcw4ASCSWhmPd6HPjykpLxEUqeZcuY1pfhvD3oz7vBV0mS5_2c_oLRdqDXSCyD1Z2)
@@ -126,7 +123,7 @@
 
 
 
-
+---
 # 구현
 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트와 파이선으로 구현하였다.    
 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
@@ -153,7 +150,7 @@ mvn spring-boot:run
 ```
 
 
-
+---
 ## DDD 의 적용
 - 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언
 ```
@@ -205,7 +202,7 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 ```
    
    
-   
+---
 #### 적용 후 REST API 의 테스트   
 
 ##### A) 차량등록   
@@ -238,7 +235,7 @@ http http://localhost:8084/myPages
    
 
 
-
+---
 ## 폴리글랏 퍼시스턴스
 모두 H2 메모리DB를 적용하였다.  
 다양한 데이터소스 유형 (RDB or NoSQL) 적용 시 데이터 객체에 @Entity 가 아닌 @Document로 마킹 후, 기존의 Entity Pattern / Repository Pattern 적용과 데이터베이스 제품의 설정 (application.yml) 만으로 가능하다.
@@ -256,7 +253,7 @@ spring:
 
 
 
-
+---
 ## 동기식 호출 과 Fallback 처리
 Reservation → Payment 간 호출은 동기식 일관성 유지하는 트랜잭션으로 처리.     
 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출.     
@@ -328,7 +325,7 @@ Payment를 종료한 시점에서 상기 Reservation 등록 Script 실행 시, 5
 
 
 
-
+---
 ## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
 
 Payment가 이루어진 후에(PAID) Rental시스템으로 이를 알려주는 행위는 동기식이 아니라 비 동기식으로 처리.   
