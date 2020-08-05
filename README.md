@@ -267,38 +267,24 @@ public interface PaymentRepository extends PagingAndSortingRepository<Payment, L
 
 }
 ```
-#### 적용 후 REST API 의 테스트   
-A) 차량등록   
-차량1 : http http://localhost:8085/carManagements carNo=car01 rentalAmt=10000 carRegDt=20200701 procStatus=WAITING   
-![](images/차량등록_car01.png)   
-   
-차량2 : http http://localhost:8085/carManagements carNo=car02 rentalAmt=20000 carRegDt=20200702 procStatus=WAITING   
-![](images/차량등록_car02.png)   
-   
-B) 예약   
-예약1 : http http://localhost:8082/carReservations resrvNo=res20200801Seq0001 resrvDt=20200801 carNo=car01 rentalDt=20200806 returnDt=20200807 rentalAmt=50000 procStatus=RESERVED   
-![](images/차량예약_car01.png)   
-   
-예약2 : http http://localhost:8082/carReservations resrvNo=res20200803Seq0001 resrvDt=20200803 carNo=car02 rentalDt=20200803 returnDt=20200805 rentalAmt=20000 procStatus=RESERVED   
-![](images/차량예약_car02.png)   
-   
-예약2 취소 : http http://localhost:8082/carReservations id=2 resrvNo=res20200803Seq0001 resrvCncleDt=20200803 procStatus=RESERVATION_CANCELED   
-![](images/차량예약취소_car02.png)   
-   
-C) 결제   
-결제1 : http http://localhost:8083/payments id=1 resrvNo=res20200801Seq0001 paymtNo=pay20200801Seq0001 paymtDt=20200801  paymtAmt=50000 procStatus=PAID carNo=car01 rentalDt=20200806 returnDt=20200807 rentalAmt=50000   
-![](images/결제_car01.png)   
-   
-결제취소1 : http http://localhost:8083/payments id=1 resrvNo=res20200801Seq0001 paymtNo=pay20200801Seq0001 paymtCncleDt=20200803 paymtAmt=50000 procStatus=PAYMENT_CANCELED carNo=car01   
-![](images/결제취소_car01.png)   
-   
-D) 마이페이지   
-http http://localhost:8084/myPages   
-![](images/마이페이지_예약취소,결제취소후_003.png)   
-   
+적용 후 REST API 의 테스트
+```
+A) 차량등록
+http http://localhost:8085/carManagements
+http http://localhost:8085/carManagements carNo=car01 rentalAmt=10000 procStatus=WAITING carRegDt=20200701
+http http://localhost:8085/carManagements carNo=car02 rentalAmt=20000 procStatus=WAITING carRegDt=20200702
+B) Reservation
+http http://localhost:8082/carReservations
+예약 : http http://localhost:8082/carReservations carNo=car01 custNo=cus01 paymtNo=pay20200801Seq0001 procStatus=RESERVED rentalAmt=10000 resrvNo=res20200801Seq0001 resrvDt=20200801 rentalDt=20200802 returnDt=20200805
+예약 취소 : http http://localhost:8082/carReservations id=2 carNo=car01 custNo=cus01 paymtNo=pay20200801Seq0001 procStatus=RESERVATION_CANCELED rentalAmt=10000 resrvNo=res20200801Seq0001 resrvDt=20200801 rentalDt=20200802 returnDt=20200805
+c) payment
+http http://localhost:8083/payments
+지불 : http http://localhost:8083/payments id=1 paymtAmt=10000 paymtDt=20200801 paymtNo=pay20200801Seq0001 procStatus=PAID resrvNo=res20200801Seq0001
+지불취소 : http http://localhost:8083/payments id=1 paymtAmt=10000 paymtDt=20200801 paymtNo=pay20200801Seq0001 procStatus=PAYMENT_CANCELED resrvNo=res20200801Seq0001
+```
 
 ## 폴리글랏 퍼시스턴스
-모두 H2 메모리DB를 적용하였다.   
+모두 H2 메모리DB를 적용하였다.
 다양한 데이터소스 유형 (RDB or NoSQL) 적용 시 데이터 객체에 @Entity 가 아닌 @Document로 마킹 후, 기존의 Entity Pattern / Repository Pattern 적용과 데이터베이스 제품의 설정 (application.yml) 만으로 가능하다.
 
 ```
@@ -313,26 +299,129 @@ spring:
 ```
 
 ## 동기식 호출 과 Fallback 처리
-Reservation --> Payment 간 호출은 동기식 일관성 유지하는 트랜잭션으로 철.
+Reservation → Payment 간 호출은 동기식 일관성 유지하는 트랜잭션으로 처리.
 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출.
 다.
+```
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
+@SpringBootApplication
+@EnableBinding(KafkaProcessor.class)
+@EnableFeignClients
+public class ReservationApplication {
+    protected static ApplicationContext applicationContext;
+    public static void main(String[] args) {
+        applicationContext = SpringApplication.run(ReservationApplication.class, args);
+    }
+}
+```
 ReservationApplication.java.
-→ FeignClient 방식을 통해서 Request-Response 처리.
-→ Feign 방식은 넷플릭스에서 만든 Http Client 입니다. Feign 방식은 Http call 을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.
-→ 실제 Request/Response 에러 시 Fegin Error 나는 것 확인 함. (Ex. POST가 아닌 PUT으로 Request 시).
+FeignClient 방식을 통해서 Request-Response 처리.
+Feign 방식은 넷플릭스에서 만든 Http Client 입니다. Feign 방식은 Http call 을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.
+실제 Request/Response 에러 시 Fegin Error 나는 것 확인 함. (Ex. POST가 아닌 PUT으로 Request 시).
 
 
 
 
+- 예약 받은 직후(@PostPersist) 결제 요청함
+```
+-- CarReservation.java
+    @PostPersist
+    public void onPostPersist(){
+        CarReserved carReserved = new CarReserved();
+        BeanUtils.copyProperties(this, carReserved);
+        carReserved.publishAfterCommit();
+
+        //Following code causes dependency to external APIs
+        // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
+
+        carrental.external.Payment payment = new carrental.external.Payment();
+        // mappings goes here
+        payment.setId(carReserved.getId());
+        payment.setResrvNo(carReserved.getResrvNo());
+        payment.setPaymtNo(carReserved.getResrvNo());
+        payment.setPaymtDt(carReserved.getResrvDt());
+        payment.setRentalAmt(carReserved.getRentalAmt());
+        payment.setPaymtAmt(carReserved.getRentalAmt());
+        payment.setProcStatus("RESERVED");
+        payment.setCarNo(carReserved.getCarNo());
+        payment.setRentalDt(carReserved.getRentalDt());
+        payment.setReturnDt(carReserved.getReturnDt());
+
+        System.out.println("##### listener carReservationCanceled.getResrvNo [RESERVED] : " + carReserved.getResrvNo());
+
+        ReservationApplication.applicationContext.getBean(carrental.external.PaymentService.class)
+            .payment(payment);
+
+    }
+```
 
 
 
+- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문도 못받는다는 것을 확인함.
+```
+http http://localhost:8082/carReservations carNo=car01 custNo=cus01 paymtNo=pay20200801Seq0001 procStatus=RESERVED rentalAmt=10000 resrvNo=res20200801Seq0001 resrvDt=20200801 rentalDt=20200802 returnDt=20200805 #Fail
+```
+Payment를 종료한 시점에서는 500 Error ("Could not commit JPA transaction; nested exception is javax.persistence.RollbackException: Error while committing the transaction") 발생.
 
 
+## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
 
+Payment가 이루어진 후에(PAID) RentaL시스템으로 이를 알려주는 행위는 동기식이 아니라 비 동기식으로 처리.
+Rental 시스템의 처리를 위하여 결제주문이 블로킹 되지 않아도록 처리.
+이를 위하여 결제이력에 기록을 남긴 후에 곧바로 결제승인이 되었다는 도메인 이벤트를 카프카로 송출한다(Publish).
 
+- Rental 서비스에서는 PAID 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
+```
+@Service
+public class PolicyHandler{
 
+    @Autowired
+    CarRentalRepository carRentalRepository;
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void onStringEventListener(@Payload String eventString){
+
+    }
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverPaid_CarRental(@Payload Paid paid){
+
+        if(paid.isMe() && "PAID".equals(paid.getProcStatus())){
+
+            CarRental carRental = new CarRental();
+            carRental.setId(paid.getId());
+            carRental.setResrvNo(paid.getResrvNo());
+            carRental.setPaymtNo(paid.getPaymtNo());
+            carRental.setCarNo(paid.getCarNo());
+            carRental.setRentalDt(paid.getRentalDt());
+            carRental.setReturnDt(paid.getRentalDt());
+            carRental.setProcStatus(paid.getProcStatus());
+
+            carRentalRepository.save(carRental);
+
+            System.out.println("##### listener CarRental [PAID] : " + paid.toJson());
+        }
+    }
+```
+
+- Rental 시스템은 주문/결제와 완전히 분리되어있으며, 이벤트 수신에 따라 처리되기 때문에, Rental 시스템이 유지보수로 인해 잠시 내려간 상태라도 주문을 받는데 문제가 없다:
+```
+# Rental Service 를 잠시 내려놓음 (ctrl+c)
+
+#PAID 처리
+http http://localhost:8083/payments id=1 paymtAmt=10000 paymtDt=20200801 paymtNo=pay20200801Seq0001 procStatus=PAID resrvNo=res20200801Seq0001 #Success
+
+#결제상태 확인
+http http://localhost:8083/payments     
+
+#Rental 서비스 기동
+cd Rental
+mvn spring-boot:run
+
+#Rental 상태 확인
+http http://localhost:8081/carRentals     # 제대로 kafka로 부터 data 수신 함을 확인
+```
 
 
 
