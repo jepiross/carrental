@@ -257,10 +257,10 @@ public class ReservationApplication {
 }
 ```
 
-FeignClient 방식을 통해서 Request-Response 처리.
-Feign 방식은 넷플릭스에서 만든 Http Client. 
-Feign 방식은 Http call 을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.
-실제 Request/Response 에러 시 Fegin Error 나는 것 확인 함. (Ex. POST가 아닌 PUT으로 Request 시).
+FeignClient 방식을 통해서 Request-Response 처리.   
+Feign 방식은 넷플릭스에서 만든 Http Client.   
+Feign 방식은 Http call 을 할 때, 도메인의 변화를 최소화 하기 위하여 interface 로 구현체를 추상화.   
+실제 Request/Response 에러 시 Fegin Error 나는 것 확인 함.   
 
 
 
@@ -303,9 +303,9 @@ carReservation -- (http request/response) --> Payment
 # carReservation 등록
 http http://localhost:8082/carReservations carNo=car01 custNo=cus01 paymtNo=pay20200801Seq0001 procStatus=RESERVED rentalAmt=10000 resrvNo=res20200801Seq0001 resrvDt=20200801 rentalDt=20200802 returnDt=20200805     #Fail!!!!
 ```
-Payment를 종료한 시점에서 상기 Reservation 등록 Script 실행 시,  
-500 Error 발생. ("Could not commit JPA transaction; nested exception is javax.persistence.RollbackException: Error while committing the transaction") .
-
+Payment를 종료한 시점에서 상기 Reservation 등록 Script 실행 시, 500 Error 발생.
+("Could not commit JPA transaction; nested exception is javax.persistence.RollbackException: Error while committing the transaction")   
+![](images/결제서비스_중지_시_예약시도.png)   
 
 ## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
 
