@@ -125,7 +125,7 @@
 
 # 구현:
 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트와 파이선으로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
-
+```
 cd rental
 mvn spring-boot:run
 
@@ -140,11 +140,11 @@ mvn spring-boot:run
 
 cd management
 mvn spring-boot:run  
-
+```
 
 ## DDD 의 적용
 - 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언
-
+```
 package carrental;
 
 import org.springframework.beans.BeanUtils;
@@ -256,18 +256,19 @@ public class Payment {
     }
 
 }
-
+```
 
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 
 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용
-
+```
 package carrental;
 import org.springframework.data.repository.PagingAndSortingRepository;
 public interface PaymentRepository extends PagingAndSortingRepository<Payment, Long>{
 
 }
-
+```
 적용 후 REST API 의 테스트
+```
 A) 차량등록
 http http://localhost:8085/carManagements
 http http://localhost:8085/carManagements carNo=car01 rentalAmt=10000 procStatus=WAITING carRegDt=20200701
@@ -280,11 +281,18 @@ c) payment
 http http://localhost:8083/payments
 지불 : http http://localhost:8083/payments id=1 paymtAmt=10000 paymtDt=20200801 paymtNo=pay20200801Seq0001 procStatus=PAID resrvNo=res20200801Seq0001
 지불취소 : http http://localhost:8083/payments id=1 paymtAmt=10000 paymtDt=20200801 paymtNo=pay20200801Seq0001 procStatus=PAYMENT_CANCELED resrvNo=res20200801Seq0001
-
+```
 
 ## 폴리글랏 퍼시스턴스
 각 마이크로서비스의 특성에 따라 데이터 저장소를 RDB, DocumentDB/NoSQL 등 다양하게 사용할 수 있지만, 시간적/환경적 특성상 모두 H2 메모리DB를 적용하였다.
 DocumentDB/NoSQL를 적용하는 경우는 어그리케잇인 데이터 객체에 @Entity 가 아닌 @Document로 마킹하며, 별다른 작업없이 기존의 Entity Pattern 과 Repository Pattern 적용과 데이터베이스 제품의 설정 (application.yml) 만으로 가능하다.
+
+
+
+
+
+
+
 
 
 
