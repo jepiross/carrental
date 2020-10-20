@@ -1,5 +1,3 @@
-![1-1_상품정보등록_모니터](https://user-images.githubusercontent.com/70302880/96430740-834b7e80-123d-11eb-8c72-8ae2a7cdd0fe.PNG)
-
 # 2조 과제 - 렌터카 서비스
 
 ### Table of contents
