@@ -235,7 +235,7 @@ delivery : http GET http://localhost:8083/products/1
 
 ##### Step 2-2 렌탈 요청 후 결과 조회
 rental 렌탈 주문 정보(재고 수량 이상) : http GET http://localhost:8082/rentals/1
-![2-2_결과조회_렌탈주문정보(재고수량이상)](https://user-images.githubusercontent.com/70302880/96540561-0372f200-12d9-11eb-9783-7536d20fd579.PNG)
+![2-1_렌탈요청_재고수량이상](https://user-images.githubusercontent.com/70302880/96540555-01a92e80-12d9-11eb-88a3-c400f299df8f.PNG)
 
  rental 렌탈 주문 정보(미등록 상품) : http GET http://localhost:8082/rentals/2
  ![2-2_결과조회_렌탈주문정보(미등록상품)](https://user-images.githubusercontent.com/70302880/96540559-02da5b80-12d9-11eb-8251-73f33fa307cc.PNG)
