@@ -246,7 +246,7 @@ rental 렌탈 주문 정보(재고 수량 이상) : http GET http://localhost:80
  delivery 배송정보 : http GET http://localhost:8083/deliveries/3
  ![2-2_결과조회_배송정보](https://user-images.githubusercontent.com/70302880/96540566-04a41f00-12d9-11eb-877e-9f1478e15b3f.PNG)
  
- delivery 재고차감 확인 : http GET http://localhost:8083/products/1
+ delivery 재고차감 확인 : http GET http://localhost:8083/products/1  
   .최초 제품 등록시 재고 9개, 3개 배송 되어 최종 수량 6개 변경
  ![2-2_결과조회_배송_재고차감확인](https://user-images.githubusercontent.com/70302880/96540565-040b8880-12d9-11eb-8a37-17ccc7c4e5c8.PNG)
  
