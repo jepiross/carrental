@@ -223,8 +223,8 @@ delivery : http GET http://localhost:8083/products/1
 ![1-2_결과조회_delivery](https://user-images.githubusercontent.com/70302880/96540545-ffdf6b00-12d8-11eb-91d8-ddff7abffe51.PNG)  
    
 ##### Step 2-1 렌탈 요청   
-재고수량이상 렌탈요청 : http POST http://localhost:8082/rentals productId=1 qty=12 status=ORDERED productName=computer   
-![2-1_렌탈요청_재고수량이상](https://user-images.githubusercontent.com/70302880/96540555-01a92e80-12d9-11eb-88a3-c400f299df8f.PNG   
+재고 수량 이상 렌탈 요청 : http POST http://localhost:8082/rentals productId=1 qty=12 status=ORDERED productName=computer   
+![2-1_렌탈요청_재고수량이상](https://user-images.githubusercontent.com/70302880/96541735-96ad2700-12db-11eb-8256-8b7679516a85.PNG)   
    
 미등록 상품 렌탈요청 : http POST http://localhost:8082/rentals productId=22 qty=12 status=ORDERED productName=computer   
 ![2-1_렌탈요청_미등록상품](https://user-images.githubusercontent.com/70302880/96540552-01109800-12d9-11eb-817f-8b8b3717389c.PNG)   
